@@ -16,6 +16,7 @@ from pathlib import Path
 from google.genai import types
 from pydantic_ai.messages import ToolCallPart
 from google.adk.runners import InMemoryRunner
+from google.adk.apps import App
 
 from adk_agent.glossary_agent.agent import root_agent
 from app.agent import agent as pydantic_agent
@@ -94,7 +95,7 @@ async def run_adk(category, question, expected, repetition):
     request_count = 0
     input_tokens = 0
     output_tokens = 0
-    async with InMemoryRunner(agent=root_agent, app_name="glossary_eval") as runner:
+    async with InMemoryRunner(app=App(name="glossary_eval", root_agent=root_agent)) as runner:
         session = await runner.session_service.create_session(
             app_name="glossary_eval", user_id="evaluation"
         )

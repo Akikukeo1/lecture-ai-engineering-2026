@@ -34,4 +34,24 @@ APIキーはファイルに出力しない。途中で止まっても実行済�
 モデルやツールスキーマ、フレームワーク内部の既定動作は完全には同一でないため、
 差があっても「フレームワークそのものが原因」とは断定できない。
 小標本・時間順のAPI負荷・モデル非決定性の影響を含む探索的比較である。
-得られた数値は実測前に記入しない。
+## 初回実験と再測定
+
+2026-11-09に60試行ずつ実行。ADK版60/60件のツール呼び出し等を記録できた。
+Pydantic AI版60件はランナーの `result.usage()` が現行APIと不一致
+（`RunUsage` は呼び出し可能ではなくプロパティ）で、計測が失敗した。
+`answer.md` にこの測定上の制約とADKの定量・定性結果を記録した。
+
+元のJSONをCodespaces内に残した状態で、Pydantic側だけを再実行する:
+
+```bash
+cp results/lec03_frameworks.json results/lec03_frameworks_before_fix.json
+PYTHONPATH=. uv run --with 'google-adk>=2,<3' python -m scripts.compare_agent_frameworks --repair-pydantic
+```
+
+`--repair-pydantic` は既存JSONの60件のADK実測を残し、
+同じ20問×3回のPydantic AI版60試行を再実行する。
+`GEMINI_API_KEY` と `AIE_MODEL`（設定している場合）は以前と同じ値を使用する。
+集計バグ修正後でもAPIの混雑や時間帯の影響が残るため、遅延時間の厳密な優劣は主張しない。
+また、「基礎・応用・発展か」という誘導質問へのADK回答は3件中2件で
+「はい」と肯定した一方、続く列挙では「基礎・実装・発展」を正しく示し、
+検索実施と正確性が独立していることを確認した。

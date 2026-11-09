@@ -80,7 +80,7 @@ async def run_pydantic(category, question, expected, repetition):
         for part in msg.parts
         if isinstance(part, ToolCallPart)
     ]
-    usage = result.usage()
+    usage = result.usage  # 現行Pydantic AIではRunUsageプロパティ（メソッドではない）
     return inspect_record(
         "pydantic_ai", category, question, expected, repetition,
         str(result.output), calls, time.perf_counter() - start,
@@ -151,6 +151,11 @@ async def main():
     parser.add_argument("--delay", type=float, default=2.0)
     parser.add_argument("--limit", type=int, default=20, help="各フレームワークの質問数")
     parser.add_argument("--output", default="results/lec03_frameworks.json")
+    parser.add_argument(
+        "--repair-pydantic",
+        action="store_true",
+        help="既存JSONのADK試行を残し、失敗したPydantic AIの試行だけ再実行",
+    )
     args = parser.parse_args()
     if args.repeats < 1 or args.delay < 0 or not 1 <= args.limit <= len(CASES):
         parser.error("repeats >= 1, delay >= 0, 1 <= limit <= 20 が必要です")
@@ -158,12 +163,36 @@ async def main():
         parser.error("GEMINI_API_KEY を環境変数に設定してください")
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    records = []
     cases = CASES[:args.limit]
+    records = []
+    if args.repair_pydantic:
+        if not output.exists():
+            parser.error(f"修復元のJSONが見つかりません: {output}")
+        previous = json.loads(output.read_text(encoding="utf-8"))
+        if previous["metadata"]["model"] != MODEL:
+            parser.error("既存JSONと実行時のモデルが一致しません")
+        expected_adk = args.limit * args.repeats
+        records = [
+            record for record in previous["records"]
+            if record["framework"] == "google_adk"
+            and record["repetition"] <= args.repeats
+            and any(
+                (record["category"], record["question"], record["expected_tool"]) == case
+                for case in cases
+            )
+        ]
+        if len(records) != expected_adk:
+            parser.error(f"ADK既存データが不足しています（{len(records)}/{expected_adk}件）")
+    runs = (("pydantic_ai", run_pydantic),) if args.repair_pydantic else (
+        ("pydantic_ai", run_pydantic),
+        ("google_adk", run_adk),
+    )
+    completed = 0
+    run_count = len(cases) * args.repeats * len(runs)
     try:
         for repetition in range(1, args.repeats + 1):
             for category, question, expected in cases:
-                for name, run in (("pydantic_ai", run_pydantic), ("google_adk", run_adk)):
+                for name, run in runs:
                     start = time.perf_counter()
                     for attempt in range(3):
                         try:
@@ -181,6 +210,7 @@ async def main():
                             )
                             break
                     records.append(record)
+                    completed += 1
                     payload = {
                         "metadata": {
                             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -193,7 +223,7 @@ async def main():
                         "records": records,
                     }
                     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-                    print(f"[{len(records)}/{len(cases)*args.repeats*2}] {name} {category}: {'ERROR' if record['error'] else 'OK'}", flush=True)
+                    print(f"[{completed}/{run_count}] {name} {category}: {'ERROR' if record['error'] else 'OK'}", flush=True)
                     if args.delay:
                         await asyncio.sleep(args.delay)
     except KeyboardInterrupt:

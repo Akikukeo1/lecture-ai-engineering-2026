@@ -28,6 +28,12 @@ DEFAULT_CASES = ROOT / "data" / "eval" / "lec04_cases.jsonl"
 DEFAULT_LABELS = ROOT / "lectures" / "04" / "labels.jsonl"
 INSTRUCTOR_LABELS = ROOT / "lectures" / "04" / "reference" / "labels_instructor.jsonl"
 MY_CASES = ROOT / "data" / "eval" / "my_cases.jsonl"
+MY_LABELS = ROOT / "lectures" / "04" / "my_labels.jsonl"
+
+DATASETS = {
+    "講義演習（配布10問）": (DEFAULT_CASES, DEFAULT_LABELS),
+    "宿題・実装（独自10問）": (MY_CASES, MY_LABELS),
+}
 
 CRITERION_HELP = {
     "grounding": "用語集にある事柄はエントリと矛盾しない。ない事柄は断定せず「用語集にはない」と伝えている",
@@ -56,21 +62,29 @@ def page_label(cases_path: Path, labels_path: Path) -> None:
         st.error(f"{rel(cases_path)} に評価セットがありません")
         return
     labels = load_labels(labels_path) if labels_path.exists() else {}
-
-    if "index" not in st.session_state:
+    # ラベルの質問も保存して別の10問との取り違えを防ぐ。
+    mismatched = [
+        c["id"] for c in cases
+        if c["id"] in labels and labels[c["id"]].get("question", c["question"]) != c["question"]
+    ]
+    if mismatched:
+        st.error(f"ラベルと評価セットの質問が一致しません（id: {', '.join(mismatched)}）。保存先を確認してください。")
+        return
+    index_key = f"index:{cases_path.resolve()}"
+    if index_key not in st.session_state:
         done = [i for i, c in enumerate(cases) if c["id"] in labels]
-        st.session_state.index = min(len(done), len(cases) - 1) if done else 0
+        st.session_state[index_key] = min(len(done), len(cases) - 1) if done else 0
 
-    i = st.session_state.index
+    i = st.session_state[index_key]
     case = cases[i]
     st.progress((len(labels)) / len(cases), text=f"保存済み {len(labels)} / {len(cases)} 件　｜　表示中：#{case['id']}（{i + 1} 件目）")
 
     nav1, nav2, nav3 = st.columns([1, 1, 6])
     if nav1.button("← 前へ", disabled=i == 0):
-        st.session_state.index = i - 1
+        st.session_state[index_key] = i - 1
         st.rerun()
     if nav2.button("次へ →", disabled=i >= len(cases) - 1):
-        st.session_state.index = i + 1
+        st.session_state[index_key] = i + 1
         st.rerun()
 
     left, right = st.columns([3, 2])
@@ -108,6 +122,7 @@ def page_label(cases_path: Path, labels_path: Path) -> None:
         if submitted:
             labels[case["id"]] = {
                 "id": case["id"],
+                "question": case["question"],
                 **{key: ("pass" if choice[key].startswith("合格") else "fail") for key, _ in ALL_CRITERIA},
                 "unsure_flag": unsure,
                 "note": note,
@@ -138,7 +153,10 @@ def page_compare(cases_path: Path, labels_path: Path) -> None:
     mine, ref = load_labels(labels_path), load_labels(INSTRUCTOR_LABELS)
     ids = [c["id"] for c in cases if c["id"] in mine and c["id"] in ref]
     st.subheader("自分のラベルと講師のラベルの一致")
-    st.caption("講師のラベルが正解というわけではありません。人同士でも割れる項目があることを見るためのものです")
+    st.caption("講師のラベルは配布10問向けです。独自の評価セットとの比較には使えません。")
+    if cases_path.resolve() != DEFAULT_CASES.resolve():
+        st.warning("講師のラベルは独自の10問に対応していません。評価対象を「講義演習」に切り替えてください。")
+        return
     cols = st.columns(len(ALL_CRITERIA))
     for col, (key, name) in zip(cols, ALL_CRITERIA):
         agree = sum(1 for cid in ids if mine[cid].get(key) == ref[cid].get(key))
@@ -192,8 +210,11 @@ def main() -> None:
     with st.sidebar:
         mode = st.radio("画面", ["ラベル付け", "比べる（講師のラベルと）", "作問（宿題・実装）"])
         st.divider()
-        cases_path = Path(st.text_input("評価セット", value=rel(DEFAULT_CASES)))
-        labels_path = Path(st.text_input("ラベルの保存先", value=rel(DEFAULT_LABELS)))
+        dataset = st.radio("評価対象", list(DATASETS))
+        default_cases, default_labels = DATASETS[dataset]
+        # dataset毎のwidgetキーにすることで切り替え時に正しい保存先が反映される。
+        cases_path = Path(st.text_input("評価セット", value=rel(default_cases), key=f"cases_{dataset}"))
+        labels_path = Path(st.text_input("ラベルの保存先", value=rel(default_labels), key=f"labels_{dataset}"))
         my_cases_path = Path(st.text_input("作問の保存先", value=rel(MY_CASES)))
     cases_path = cases_path if cases_path.is_absolute() else ROOT / cases_path
     labels_path = labels_path if labels_path.is_absolute() else ROOT / labels_path

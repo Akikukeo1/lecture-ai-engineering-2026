@@ -1,0 +1,19 @@
+name: 第3回 ADK / Pydantic AI テスト
+
+on:
+  pull_request:
+  push:
+    branches: [lec03-adk-evaluation]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: APIキー不要のテスト
+        run: uv run --with 'google-adk>=2,<3' pytest -q
+      - name: 比較スクリプトのCLI確認
+        run: PYTHONPATH=. uv run --with 'google-adk>=2,<3' python -m scripts.compare_agent_frameworks --help

@@ -3,6 +3,28 @@
   "rubric": "data\\eval\\rubric.md",
   "run_at": "2026-11-16T17:21:47",
   "verdicts": {
+    "10": {
+      "grounding": {
+        "reason": "用語集や参照の範囲を踏まえつつ、LoRAとツール呼び出しの違いについて正確に説明しており、推測による断定や矛盾もないため。",
+        "verdict": "pass"
+      },
+      "scope": {
+        "reason": "講座の第2回・第3回の内容や用語の範囲にしっかり則って適切に応答しているため。",
+        "verdict": "pass"
+      },
+      "hint": {
+        "reason": "宿題の答えそのものではなく、講義の内容に基づいた概念の違いを分かりやすく解説しているため。",
+        "verdict": "pass"
+      },
+      "clarity": {
+        "reason": "質問に対して直接的かつ簡潔に違いが整理されており、繰り返しや無駄な説明も見当たらないため。",
+        "verdict": "pass"
+      },
+      "lecture_mark": {
+        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定",
+        "verdict": "fail"
+      }
+    },
     "01": {
       "grounding": {
         "reason": "用語集のエントリや期待するふるまいに沿ってトークンと文字数の違いを正しく説明しているため。",
@@ -200,28 +222,6 @@
         "reason": "末尾（最後の行）に「第N回」があるかをコードで判定",
         "verdict": "fail"
       }
-    },
-    "10": {
-      "grounding": {
-        "reason": "用語集や参照の範囲を踏まえつつ、LoRAとツール呼び出しの違いについて正確に説明しており、推測による断定や矛盾もないため。",
-        "verdict": "pass"
-      },
-      "scope": {
-        "reason": "講座の第2回・第3回の内容や用語の範囲にしっかり則って適切に応答しているため。",
-        "verdict": "pass"
-      },
-      "hint": {
-        "reason": "宿題の答えそのものではなく、講義の内容に基づいた概念の違いを分かりやすく解説しているため。",
-        "verdict": "pass"
-      },
-      "clarity": {
-        "reason": "質問に対して直接的かつ簡潔に違いが整理されており、繰り返しや無駄な説明も見当たらないため。",
-        "verdict": "pass"
-      },
-      "lecture_mark": {
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定",
-        "verdict": "fail"
-      }
     }
   },
   "summary": {
@@ -229,19 +229,19 @@
     "per_criterion": {
       "grounding": {
         "name": "根拠",
-        "agree": 10,
+        "agree": 9,
         "compared": 10,
         "total": 10
       },
       "scope": {
         "name": "範囲",
-        "agree": 9,
+        "agree": 10,
         "compared": 10,
         "total": 10
       },
       "hint": {
         "name": "ヒント",
-        "agree": 9,
+        "agree": 10,
         "compared": 10,
         "total": 10
       },
@@ -253,13 +253,13 @@
       },
       "lecture_mark": {
         "name": "回の表示",
-        "agree": 3,
+        "agree": 10,
         "compared": 10,
         "total": 10
       }
     },
     "overall": {
-      "agree": 3,
+      "agree": 10,
       "compared": 10
     },
     "coverage": {
@@ -269,86 +269,15 @@
     "review": [],
     "mismatches": [
       {
-        "id": "01",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
-        "id": "02",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "見逃し",
-        "judge": "pass",
-        "human": "fail",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
-        "id": "03",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
-        "id": "06",
-        "criterion": "hint",
-        "name": "ヒント",
-        "kind": "見逃し",
-        "judge": "pass",
-        "human": "fail",
-        "reason": "宿題の答えや関係する質問ではないため、この基準は自動的に pass となります。"
-      },
-      {
-        "id": "07",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
-        "id": "08",
-        "criterion": "scope",
-        "name": "範囲",
-        "kind": "見逃し",
-        "judge": "pass",
-        "human": "fail",
-        "reason": "講座の学習支援範囲外である天気に関する質問に対して、それに応じず範囲外であることを伝えています。"
-      },
-      {
-        "id": "08",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
-        "id": "09",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
-      },
-      {
         "id": "10",
-        "criterion": "lecture_mark",
-        "name": "回の表示",
-        "kind": "過検出",
-        "judge": "fail",
-        "human": "pass",
-        "reason": "末尾（最後の行）に「第N回」があるかをコードで判定"
+        "criterion": "grounding",
+        "name": "根拠",
+        "kind": "見逃し",
+        "judge": "pass",
+        "human": "fail",
+        "reason": "用語集や参照の範囲を踏まえつつ、LoRAとツール呼び出しの違いについて正確に説明しており、推測による断定や矛盾もないため。"
       }
     ]
-  }
+  },
+  "summary_recomputed_from_reviewed_labels": true
 }

@@ -10,6 +10,8 @@
 
 Pydantic AIと同じ指示・モデル・ツールを使ってGoogle ADK版を実装した。ツールの登録は、Pydantic AIでは `agent.tool_plain()`、ADKでは `Agent(tools=[...])` を使う。
 
+第5回で `app/agent.py` がRAG用に更新されたため、第3回で測定した指示・ツール構成は `app/lec03_agent.py` に分離して保存した。これにより第5回の検索エージェントを変更せずに、比較実験を再実行できる。
+
 Gemini 3.5 Flash-Liteで、用語説明・2用語比較・講義要約・未登録用語や誤前提の各5問を3回ずつ実行した（20問×3回×2方式＝120試行）。`scripts/compare_agent_frameworks.py` で回答、ツール呼び出し、処理時間、トークン数を記録した。
 
 | 指標 | Pydantic AI | Google ADK |

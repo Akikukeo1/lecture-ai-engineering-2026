@@ -7,7 +7,7 @@
 from google.adk.agents import Agent
 
 from app import tools
-from app.agent import INSTRUCTIONS
+from app.lec03_agent import INSTRUCTIONS
 from app.config import MODEL
 
 root_agent = Agent(

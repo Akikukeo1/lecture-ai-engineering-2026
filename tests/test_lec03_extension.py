@@ -5,7 +5,7 @@ import json
 from pydantic_ai.models.test import TestModel
 
 from app import tools
-from app.agent import agent
+from app.lec03_agent import agent
 
 
 def test_quiz_uses_a_real_entry_and_is_deterministic():

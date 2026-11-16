@@ -5,7 +5,7 @@ import pytest
 pytest.importorskip("google.adk")
 
 from adk_agent.glossary_agent.agent import root_agent
-from app.agent import INSTRUCTIONS
+from app.lec03_agent import INSTRUCTIONS
 from app.config import MODEL
 from app import tools
 

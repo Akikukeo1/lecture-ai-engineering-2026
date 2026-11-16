@@ -19,7 +19,7 @@ from google.adk.runners import InMemoryRunner
 from google.adk.apps import App
 
 from adk_agent.glossary_agent.agent import root_agent
-from app.agent import agent as pydantic_agent
+from app.lec03_agent import agent as pydantic_agent
 from app.agent import build_model
 from app.config import MODEL
 

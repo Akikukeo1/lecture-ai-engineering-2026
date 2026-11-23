@@ -231,34 +231,63 @@ def _record(result, question: str, mode: str, elapsed: float, reference: list[st
     }
 
 
-def compare(output_path: Path, limit: int) -> None:
-    """同一質問・同一モデルの通常RAGと提案方式を順に実行し、実測値を保存する。"""
+def compare(output_path: Path, limit: int, *, resume: bool = False) -> None:
+    """同一質問・モデルで比較する。resume時は成功済み結果を再実行しない。"""
     from app.agent import agent as BASE_AGENT
-    entries = []
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    entries = []
+    if resume:
+        if not output_path.is_file():
+            raise FileNotFoundError(f"再開する比較ログがありません: {output_path}")
+        loaded = json.loads(output_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list) or any(not isinstance(entry, dict) for entry in loaded):
+            raise ValueError("比較ログはオブジェクトの配列である必要があります。")
+        allowed = {(case["question"], mode)
+                   for case in CASES[:limit] for mode in ("vector", "hybrid")}
+        seen = set()
+        for entry in loaded:
+            key = (entry.get("question"), entry.get("mode"))
+            if key not in allowed or key in seen:
+                raise ValueError("比較ログの質問・方式が指定条件と一致しないか、重複しています。")
+            seen.add(key)
+            if "error" not in entry and entry.get("model") != MODEL:
+                raise ValueError("保存済みの実測と現在のモデルが異なります。")
+        entries = loaded
+
     for case in CASES[:limit]:
         for label, target in (("vector", BASE_AGENT), ("hybrid", HYBRID_AGENT)):
+            position = next(
+                (i for i, old in enumerate(entries)
+                 if old.get("question") == case["question"] and old.get("mode") == label),
+                None,
+            )
+            if resume and position is not None and "error" not in entries[position]:
+                print(f"[skip] {case['name']} / {label}（成功済み）", flush=True)
+                continue
             print(f"\n--- {case['name']} / {label} ---", flush=True)
             started = perf_counter()
             try:
                 response = target.run_sync(case["question"], model=build_model())
                 entry = _record(response, case["question"], label,
                                 perf_counter() - started, case["reference_pages"])
-                entries.append(entry)
                 print(entry["answer"])
                 print(f"[time] {entry['elapsed_seconds']}秒 / [usage] "
                       f"{entry['input_tokens']}/{entry['output_tokens']} tokens / "
                       f"[cost] {entry['estimated_generation_usd']} USD")
                 print(f"[pages] {', '.join(entry['retrieved_pages'])}")
             except (ModelHTTPError, ValueError, OSError) as error:
-                entries.append({"question": case["question"], "mode": label,
-                                "error": str(error)})
+                entry = {"question": case["question"], "mode": label, "error": str(error)}
                 print(f"[error] {error}")
-            finally:
-                output_path.write_text(
-                    json.dumps(entries, ensure_ascii=False, indent=2) + "\n",
-                    encoding="utf-8",
-                )
+            # 失敗した条件だけを置換し、成功済みの実測を保持する。
+            if position is None:
+                entries.append(entry)
+            else:
+                entries[position] = entry
+            output_path.write_text(
+                json.dumps(entries, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
     print(f"\n比較結果: {output_path}（実測値。回答と引用の正誤は別途確認）")
 
 
@@ -266,13 +295,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="第5回: Tree + Graph + ベクトル検索")
     parser.add_argument("question", nargs="?")
     parser.add_argument("--compare", action="store_true", help="通常RAGと同一質問で比較する")
+    parser.add_argument("--resume", action="store_true", help="失敗・未実行の条件だけ実行し直す")
     parser.add_argument("--limit", type=int, choices=(1, 2, 3), default=3,
                         help="比較に使う質問数。既定3問")
     parser.add_argument("--output", type=Path, default=Path(".cache/rag/lec05-comparison.json"))
     parser.add_argument("--trace", action="store_true", help="ツール呼び出しを表示する")
     args = parser.parse_args()
+    if args.resume and not args.compare:
+        parser.error("--resume は --compare と一緒に指定してください")
     if args.compare:
-        compare(args.output, args.limit)
+        compare(args.output, args.limit, resume=args.resume)
         return
     if not args.question:
         parser.error("質問か--compareを指定してください")

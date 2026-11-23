@@ -111,3 +111,64 @@ def test_record_serializes_generation_cost_as_json(cost, expected):
     decoded = json.loads(json.dumps([record], ensure_ascii=False))
     assert decoded[0]["estimated_generation_usd"] == expected
     assert decoded[0]["input_tokens"] == 3027
+
+
+
+def test_compare_resume_only_retries_failed_case(monkeypatch, tmp_path):
+    """503で失敗した条件のみ再実行し、既存の成功済みログを保持する。"""
+    from app import agent as agent_module
+    from types import SimpleNamespace
+
+    sample_case = hybrid.CASES[0]
+    output = tmp_path / "comparison.json"
+    saved_vector = {
+        "question": sample_case["question"], "mode": "vector", "model": hybrid.MODEL,
+        "answer": "すでに得られた実測", "elapsed_seconds": 3.995,
+    }
+    failed_hybrid = {
+        "question": sample_case["question"], "mode": "hybrid", "error": "HTTP 503",
+    }
+    output.write_text(json.dumps([saved_vector, failed_hybrid], ensure_ascii=False),
+                      encoding="utf-8")
+
+    called = []
+
+    class FakeAgent:
+        def __init__(self, mode):
+            self.mode = mode
+
+        def run_sync(self, question, *, model):
+            called.append((self.mode, question))
+            return SimpleNamespace(
+                all_messages=lambda: [],
+                output="改良版の再実行結果",
+                usage=SimpleNamespace(input_tokens=100, output_tokens=20,
+                                      requests=1, cost=Decimal("0.0001234")),
+            )
+
+    monkeypatch.setattr(agent_module, "agent", FakeAgent("vector"))
+    monkeypatch.setattr(hybrid, "HYBRID_AGENT", FakeAgent("hybrid"))
+    monkeypatch.setattr(hybrid, "build_model", lambda: object())
+
+    hybrid.compare(output, 1, resume=True)
+    actual = json.loads(output.read_text(encoding="utf-8"))
+
+    assert called == [("hybrid", sample_case["question"])]
+    assert len(actual) == 2
+    assert actual[0] == saved_vector
+    assert actual[1]["mode"] == "hybrid"
+    assert actual[1]["estimated_generation_usd"] == "0.0001234"
+    assert "error" not in actual[1]
+
+
+def test_resume_rejects_mismatched_model(monkeypatch, tmp_path):
+    """モデルを変更した場合は既存の結果と混在させない。"""
+    case = hybrid.CASES[0]
+    output = tmp_path / "comparison.json"
+    output.write_text(json.dumps([
+        {"question": case["question"], "mode": "vector",
+         "model": "a-different-model", "answer": "old"},
+    ]), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="モデル"):
+        hybrid.compare(output, 1, resume=True)

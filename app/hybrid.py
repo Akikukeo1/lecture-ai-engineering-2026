@@ -222,7 +222,9 @@ def _record(result, question: str, mode: str, elapsed: float, reference: list[st
         "question": question, "mode": mode, "model": MODEL,
         "answer": str(result.output), "elapsed_seconds": round(elapsed, 3),
         "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens,
-        "requests": usage.requests, "estimated_generation_usd": usage.cost,
+        "requests": usage.requests,
+        # Decimalは標準のjson.dumpsでは扱えない。文字列化して金額の精度も保持する。
+        "estimated_generation_usd": str(usage.cost) if usage.cost is not None else None,
         "tool_calls": calls, "retrieved_pages": seen, "reference_pages": reference,
         "reference_coverage": (len(set(reference) & set(seen)) / len(reference))
                               if reference else None,

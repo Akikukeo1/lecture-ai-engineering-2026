@@ -266,7 +266,7 @@ def main() -> None:
     parser.add_argument("--compare", action="store_true", help="通常RAGと同一質問で比較する")
     parser.add_argument("--limit", type=int, choices=(1, 2, 3), default=3,
                         help="比較に使う質問数。既定3問")
-    parser.add_argument("--output", type=Path, default=Path(".cache/lec05-comparison.json"))
+    parser.add_argument("--output", type=Path, default=Path(".cache/rag/lec05-comparison.json"))
     parser.add_argument("--trace", action="store_true", help="ツール呼び出しを表示する")
     args = parser.parse_args()
     if args.compare:

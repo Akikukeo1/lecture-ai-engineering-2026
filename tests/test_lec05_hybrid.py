@@ -1,6 +1,8 @@
 """第5回のハイブリッド検索: APIキーを使わない単体テスト。"""
 
 import json
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -87,3 +89,25 @@ def test_rejects_empty_query_and_invalid_budget(sample_pages):
         hybrid.hybrid_search("  ")
     with pytest.raises(ValueError):
         hybrid.hybrid_search("LoRA", max_results=0)
+
+
+@pytest.mark.parametrize(
+    ("cost", "expected"),
+    [(Decimal("0.0013181"), "0.0013181"), (None, None)],
+)
+def test_record_serializes_generation_cost_as_json(cost, expected):
+    """比較ログはGeminiのDecimal型費用を精度を落とさず記録できる。"""
+    result = SimpleNamespace(
+        all_messages=lambda: [],
+        output="資料に基づく回答",
+        usage=SimpleNamespace(
+            input_tokens=3027,
+            output_tokens=164,
+            requests=1,
+            cost=cost,
+        ),
+    )
+    record = hybrid._record(result, "LoRAとは？", "vector", 2.913, [])
+    decoded = json.loads(json.dumps([record], ensure_ascii=False))
+    assert decoded[0]["estimated_generation_usd"] == expected
+    assert decoded[0]["input_tokens"] == 3027
